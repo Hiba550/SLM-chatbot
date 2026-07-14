@@ -1,0 +1,1 @@
+SELECT * FROM chatbot_db.employees;
