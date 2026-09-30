@@ -1,10 +1,10 @@
 Database: chatbot_db (MySQL)
 
 === ROLE ACCESS MATRIX ===
-admin      -> ALL tables and views
+admin      -> all business tables and views (authentication and audit tables are never chat sources)
 sales      -> SalesOrders, SalesOrderItems, SalesReturns, Customers, Products, v_SalesOrders
 inventory  -> Inventory, Products, Categories, Warehouses, StockMovements, v_InventoryStatus
-finance    -> FinancialTransactions, Accounts, Payroll, Expenses, v_FinancialSummary
+finance    -> FinancialTransactions, Accounts, Payroll, Expenses, v_FinancialSummary, Employees and Departments for scoped joins
 hr         -> Employees, Departments, Shifts, LeaveTypes, LeaveEligibility, LeaveTransactions, Attendance, Payroll
 management -> v_SalesOrders, v_InventoryStatus, v_FinancialSummary, v_ManagementKPI, SalesOrders, Employees, Departments
 
@@ -13,7 +13,7 @@ management -> v_SalesOrders, v_InventoryStatus, v_FinancialSummary, v_Management
 -- Departments
 Table: Departments
 Columns: DeptID (PK), DeptName (varchar), DeptCode (varchar), Location (varchar), Budget (decimal), Status (char A=Active)
-Sample depts: Sales & Marketing (SALES), Inventory & Stores (INV), Finance & Accounts (FIN), Human Resources (HR), IT, Operations (OPS), Procurement (PROC), Management (MGMT)
+Sample depts (display name with DeptCode): Sales & Marketing (SALES), Inventory & Stores (INV), Finance & Accounts (FIN), Human Resources (HR), Information Technology (IT), Operations (OPS), Procurement (PROC), Management (MGMT)
 
 -- Employees
 Table: Employees

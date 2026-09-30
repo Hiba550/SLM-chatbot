@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+.local_jwt_secret
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+instance/
+
+# Local development server output
+server.stdout.log
+server.stderr.log
