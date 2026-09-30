@@ -7,11 +7,11 @@ Scope: Flask application, MySQL access layer and migrations, Ollama query planni
 
 1. **Sign in** — the server applies shared IP and account throttles, performs constant-cost password verification for unknown accounts, rejects disabled or invalidly scoped accounts, then creates a random database-backed session.
 2. **Session validation** — protected requests resolve the HttpOnly cookie against `AuthSessions`, re-read the current account, role, and access fingerprint, enforce CSRF on writes, and revoke stale sessions after access changes.
-3. **Question handling** — greetings and identity questions use deterministic conversational responses. Data questions receive only the role-filtered schema and bounded prior context.
+3. **Question handling** — the model receives the role-filtered schema and bounded prior context, then returns a constrained conversation-or-query decision. Ordinary dialogue stays in conversation mode without a database read.
 4. **Query controls** — generated SQL must parse as one read-only `SELECT`. The policy rejects unknown sources and fields, wildcard projections, nested queries, set operations, comments, variables, protected application tables, and access-policy violations.
 5. **Row scope** — server-owned region and department predicates are inserted before joins and aggregation. User-specific source or column scopes can only narrow the assigned role.
 6. **Execution** — MySQL reads use a read-only transaction, a 15-second statement limit, a 100-row result cap, and a bounded connection pool.
-7. **Audit and response** — the server records the query outcome before returning protected results. The response includes the answer, source rows, and inspected SQL.
+7. **Audit and response** — the server records the query outcome, then asks the model to write the user-facing answer from a bounded sample of the authorized result rows. The response includes that grounded answer, source rows, and inspected SQL.
 8. **Administration** — capability checks protect account, role, scope, schema-map, and audit endpoints. Changes revoke affected sessions and are recorded in `SecurityEvents` in the same transaction as the change.
 
 ## Findings resolved
@@ -65,6 +65,7 @@ Scope: Flask application, MySQL access layer and migrations, Ollama query planni
 - Python modules compile successfully.
 - `static/chat.js` passes Node syntax validation.
 - The live local application returns HTTP 200 with CSP, no-store, COOP, CORP, and `X-Request-ID` headers.
+- A live authenticated conversation produced a model-written greeting, then answered the follow-up IT budget question from one authorized `Departments` row with the verified value `2,500,000.00`.
 - The redesigned sign-in was inspected in desktop and 390×844 mobile layouts with no browser console warnings or errors.
 - Migration 06 was applied to the local database and the `SecurityEvents` table was created.
 

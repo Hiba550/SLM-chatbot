@@ -26,14 +26,14 @@ def recent_turns(session_id, conversation_id):
         cursor = connection.cursor()
         try:
             cursor.execute(
-                """SELECT LEFT(Question, 350), LEFT(GeneratedSQL, 900)
+                """SELECT LEFT(Question, 350), LEFT(AnswerText, 700), LEFT(GeneratedSQL, 900)
                    FROM ChatTurns
                    WHERE SessionID = %s AND ConversationID = %s
                    ORDER BY TurnID DESC LIMIT %s""",
                 (session_id, conversation_id, CONTEXT_TURNS),
             )
             rows = cursor.fetchall()
-            return [dict(question=row[0], sql=row[1]) for row in reversed(rows)]
+            return [dict(question=row[0], answer=row[1], sql=row[2]) for row in reversed(rows)]
         finally:
             cursor.close()
     except mysql.connector.Error as error:

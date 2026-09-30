@@ -889,21 +889,14 @@ function ensureMessageList() {
   return list;
 }
 
-function isConversationalQuestion(question) {
-  const text = String(question || "").toLowerCase().replace(/[?!.,]/g, " ").replace(/\s+/g, " ").trim();
-  return /^(?:hi|hello|hey|good morning|good afternoon|good evening)(?:\s+(?:there|meridian))?$/.test(text) ||
-    /^(?:(?:hi|hello|hey|good morning|good afternoon|good evening)\s+)?(?:what(?:'s|s| is) my name|do you know my name|who am i|who are you|what(?:'s|s| is) your name|how are you|thanks|thank you|bye|goodbye)$/.test(text);
-}
-
-function appendTyping(question) {
+function appendTyping() {
   const id = "typing_" + Date.now().toString(36);
   const row = document.createElement("article");
   row.className = "message-row assistant";
   row.id = id;
-  const hint = isConversationalQuestion(question) ? "Writing a reply" : "Checking the data";
   row.innerHTML = '<div class="bot-avatar">' + BOT_MARK + '</div><div class="message-content">' +
     '<div class="message-author">' + PRODUCT_NAME + '</div><div class="typing-indicator">' +
-    '<span class="typing-indicator-mark" aria-hidden="true"></span><span>' + hint + '</span></div></div>';
+    '<span class="typing-indicator-mark" aria-hidden="true"></span><span>Thinking</span></div></div>';
   ensureMessageList().appendChild(row);
   scrollToBottom();
   return id;
@@ -928,7 +921,7 @@ function renderBotMessage(message, animate, container) {
   const rowCount = Number.isFinite(Number(message.rowCount)) ? Number(message.rowCount) : rows.length;
   let meta = "";
 
-  if (status === "success" && (columns.length || sources.length)) {
+  if ((status === "success" || status === "partial") && (columns.length || sources.length)) {
     const parts = [];
     if (columns.length) parts.push('<span class="result-meta-item">' + rowCount + ' row' + (rowCount === 1 ? "" : "s") + '</span>');
     if (sources.length) parts.push('<span class="result-meta-item">Source: ' + escHtml(sources.join(", ")) + '</span>');
@@ -978,8 +971,9 @@ function renderBotMessage(message, animate, container) {
     ? columns.map((column, index) => index === metricIndex || rows[0][index] === null ? "" : String(rows[0][index])).filter(Boolean)
     : [];
   const metricLabel = [...metricContext, ...(metricIndex >= 0 ? [columns[metricIndex].replace(/([a-z])([A-Z])/g, "$1 $2")] : [])].join(" · ");
-  const metric = status === "success" && rows.length === 1 && columns.length <= 3 && metricIndex >= 0
-    ? '<div class="metric-answer"><small>' + escHtml(metricLabel) + '</small><strong>' + escHtml(formatNumericCell(rows[0][metricIndex])) + '</strong></div>' : '';
+  const metric = (status === "success" || status === "partial") && rows.length === 1 && columns.length <= 3 && metricIndex >= 0
+    ? '<div class="metric-answer"><small>' + escHtml(metricLabel) + '</small><strong>' + escHtml(formatNumericCell(rows[0][metricIndex])) +
+      '</strong><div class="metric-insight">' + formatReply(message.text) + '</div></div>' : '';
   const body = isError
     ? '<div class="status-message error">' + formatReply(message.text) + '</div>'
     : metric ? '' : '<div class="answer-copy">' + formatReply(message.text) + '</div>';
@@ -1096,10 +1090,25 @@ function downloadCsv(columns, rows, filename) {
 function formatReply(text) {
   const codeDelimiter = String.fromCharCode(96);
   const inlineCode = new RegExp(codeDelimiter + "([^" + codeDelimiter + "]+)" + codeDelimiter, "g");
-  return escHtml(text == null ? "" : text)
+  const formatInline = (value) => escHtml(value)
     .replace(inlineCode, "<code>$1</code>")
-    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\n/g, "<br>");
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+  const lines = String(text == null ? "" : text).replace(/\r/g, "").split("\n");
+  const output = [];
+  let list = [];
+  const flushList = () => {
+    if (!list.length) return;
+    output.push("<ul>" + list.map((item) => "<li>" + formatInline(item) + "</li>").join("") + "</ul>");
+    list = [];
+  };
+  lines.forEach((line) => {
+    const bullet = line.match(/^\s*[-*]\s+(.+)$/);
+    if (bullet) { list.push(bullet[1]); return; }
+    flushList();
+    if (line.trim()) output.push("<p>" + formatInline(line.trim()) + "</p>");
+  });
+  flushList();
+  return output.join("");
 }
 
 function escHtml(value) {

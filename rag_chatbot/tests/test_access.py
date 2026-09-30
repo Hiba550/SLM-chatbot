@@ -92,12 +92,6 @@ class QueryAccessTests(unittest.TestCase):
         self.assertIn('LIMIT 100', sql)
         self.assertFalse(workspace._prepare_sql('SELECT a.Budget FROM Departments a JOIN Departments a ON 1=1', 'admin')[0])
 
-    def test_budget_typo_uses_real_department(self):
-        with patch.object(workspace, 'execute_query', side_effect=[(['DeptID','DeptName','DeptCode'], [(5,'Information Technology','IT')]), (['DeptName','Budget'], [('Information Technology',2500000)])]):
-            result = workspace._department_budget_lookup('whats the budjet of the it department', 'admin')
-        self.assertEqual(result[2][0][1], 2500000)
-
-
 class SessionAccessTests(unittest.TestCase):
     def setUp(self):
         self.client = workspace.app.test_client()
@@ -166,11 +160,10 @@ class SessionAccessTests(unittest.TestCase):
 
     def test_account_change_during_query_hides_answer(self):
         user = dict(self.user, session_id=self.session_id, expires_at='2026-09-29T12:00:00+00:00')
-        result = ('SELECT DeptName, Budget FROM Departments WHERE DeptID = 5',
-                  ['DeptName', 'Budget'], [('Information Technology', 2500000)], ['Departments'])
         with patch.object(auth, 'resolve_user', return_value=(user, None, 200)), \
              patch.object(workspace, 'resolve_user', return_value=(None, 'Your account access has changed.', 401)), \
-             patch.object(workspace, '_department_budget_lookup', return_value=result), \
+             patch.object(workspace, 'recent_turns', return_value=[]), \
+             patch.object(workspace, '_ollama', return_value='{"mode":"query","sql":"SELECT Budget FROM Departments WHERE DeptID = 5"}'), \
              patch.object(workspace, 'enforce_rate_limit', return_value=True), \
              patch.object(workspace, 'log_audit'):
             response = self.client.post('/chat', json={'message': 'IT budget'},
